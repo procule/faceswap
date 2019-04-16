@@ -5,6 +5,9 @@ import logging
 import os
 import platform
 import sys
+import tensorflow as tf
+import dlib
+import cv2
 
 from importlib import import_module
 
@@ -42,8 +45,8 @@ class ScriptExecutor():
         min_ver = 1.12
         try:
             import tensorflow as tf
-        except ImportError:
-            logger.error("Tensorflow is a requirement but is not installed on your system.")
+        except ImportError as error:
+            logger.error("Tensorflow is a requirement but is not installed on your system:" + str(error))
             exit(1)
         tf_ver = float(".".join(tf.__version__.split(".")[:2]))
         if tf_ver < min_ver:
