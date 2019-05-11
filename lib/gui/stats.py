@@ -56,14 +56,8 @@ class TensorBoardLogs():
         logger.debug("Getting loss: (side: %s, session: %s)", side, session)
         all_loss = dict()
         for sess, sides in self.log_filenames.items():
-            if session is not None and sess != session:
-                logger.debug("Skipping session: %s", sess)
-                continue
             loss = dict()
             for sde, logfile in sides.items():
-                if side is not None and sde != side:
-                    logger.debug("Skipping side: %s", sde)
-                    continue
                 for event in tf.train.summary_iterator(logfile):
                     for summary in event.summary.value:
                         if "loss" not in summary.tag:
@@ -73,6 +67,7 @@ class TensorBoardLogs():
                                         dict()).setdefault(sde,
                                                            list()).append(summary.simple_value)
             all_loss[sess] = loss
+
         return all_loss
 
     def get_timestamps(self, session=None):
@@ -354,7 +349,6 @@ class Calculations():
         if not self.session.initialized:
             logger.warning("Session data is not initialized. Not refreshing")
             return
-        self.iterations = 0
         self.stats = self.get_raw()
         self.get_calculations()
         self.remove_raw()
