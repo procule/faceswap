@@ -237,7 +237,10 @@ class FaceswapControl():
 
         message = ""
         for item in loss:
-            message += "{}: {}  ".format(item[0], item[1])
+            if item[0] in ["loss_A", "loss_B"]:
+                message += "{}: ({})  ".format(item[0], item[1])
+            else:
+                message += "{}: {}  ".format(item[0], item[1])
         if not message:
             logger.trace("Error creating loss message. Returning False")
             return False
