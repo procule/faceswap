@@ -10,6 +10,7 @@ import sys
 import time
 
 from json import JSONDecodeError
+from shutil import copyfile, copytree
 
 import keras
 from keras import losses
@@ -22,6 +23,7 @@ from lib import Serializer
 from lib.model.losses import DSSIMObjective, PenalizedLoss
 from lib.model.nn_blocks import NNBlocks
 from lib.multithreading import MultiThread
+from lib.utils import get_folder
 from plugins.train._config import Config
 
 logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
@@ -391,25 +393,43 @@ class ModelBase():
             logger.info("Loaded model from disk: '%s'", self.model_dir)
         return is_loaded
 
-    def save_models(self):
+    def save_models(self, snapshot_iteration):
         """ Backup and save the models """
         logger.debug("Backing up and saving models")
         should_backup = self.get_save_averages()
         save_threads = list()
         for network in self.networks.values():
             name = "save_{}".format(network.name)
-            save_threads.append(MultiThread(network.save, name=name, should_backup=should_backup))
+            save_threads.append(MultiThread(network.save,
+                                            name=name,
+                                            should_backup=should_backup))
         save_threads.append(MultiThread(self.state.save,
-                                        name="save_state", should_backup=should_backup))
+                                        name="save_state",
+                                        should_backup=should_backup))
         for thread in save_threads:
             thread.start()
         for thread in save_threads:
             if thread.has_error:
                 logger.error(thread.errors[0])
             thread.join()
-        # Put in a line break to avoid jumbled console
-        print("\n")
         logger.info("saved models")
+        if snapshot_iteration:
+            self.snapshot_models()
+    
+    def snapshot_models(self):
+        """ Take a snapshot of the model at current state and back up """
+        logger.info("Saving snapshot")
+        src = self.model_dir
+        dst = get_folder("{}_{}".format(self.model_dir, self.iterations))
+        for filename in os.listdir(src):
+            if filename.endswith(".bk"):
+                continue
+            srcfile = os.path.join(src, filename)
+            dstfile = os.path.join(dst, filename)
+            copyfunc = copytree if os.path.isdir(srcfile) else copyfile
+            logger.debug("Saving snapshot: '%s' > '%s'", srcfile, dstfile)
+            copyfunc(srcfile, dstfile)
+        logger.info("Saved snapshot")
 
     def get_save_averages(self):
         """ Return the loss averages since last save and reset historical losses
