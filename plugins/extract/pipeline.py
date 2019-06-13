@@ -23,13 +23,14 @@ class Extractor():
             Extractor.input_queue
     """
     def __init__(self, detector, aligner, loglevel,
-                 multiprocess=False, rotate_images=None, min_size=20):
-        logger.debug("Initializing %s: (detector: %s, aligner: %s, loglevel: %s, multiprocess: %s"
-                     ", rotate_images: %s, min_size: %s)", self.__class__.__name__, detector,
-                     aligner, loglevel, multiprocess, rotate_images, min_size)
+                 configfile=None, multiprocess=False, rotate_images=None, min_size=20):
+        logger.debug("Initializing %s: (detector: %s, aligner: %s, loglevel: %s, configfile: %s, "
+                     "multiprocess: %s, rotate_images: %s, min_size: %s)", self.__class__.__name__,
+                     detector, aligner, loglevel, configfile, multiprocess, rotate_images,
+                     min_size)
         self.phase = "detect"
-        self.detector = self.load_detector(detector, loglevel, rotate_images, min_size)
-        self.aligner = self.load_aligner(aligner, loglevel)
+        self.detector = self.load_detector(detector, loglevel, rotate_images, min_size, configfile)
+        self.aligner = self.load_aligner(aligner, loglevel, configfile)
         self.is_parallel = self.set_parallel_processing(multiprocess)
         self.processes = list()
         self.queues = self.add_queues()
@@ -69,31 +70,36 @@ class Extractor():
         return retval
 
     @staticmethod
-    def load_detector(detector, loglevel, rotation, min_size):
+    def load_detector(detector, loglevel, rotation, min_size, configfile):
         """ Set global arguments and load detector plugin """
         detector_name = detector.replace("-", "_").lower()
         logger.debug("Loading Detector: '%s'", detector_name)
         detector = PluginLoader.get_detector(detector_name)(loglevel=loglevel,
                                                             rotation=rotation,
-                                                            min_size=min_size)
+                                                            min_size=min_size,
+                                                            configfile=configfile)
         return detector
 
     @staticmethod
-    def load_aligner(aligner, loglevel):
+    def load_aligner(aligner, loglevel, configfile):
         """ Set global arguments and load aligner plugin """
         aligner_name = aligner.replace("-", "_").lower()
         logger.debug("Loading Aligner: '%s'", aligner_name)
-        aligner = PluginLoader.get_aligner(aligner_name)(loglevel=loglevel)
+        aligner = PluginLoader.get_aligner(aligner_name)(loglevel=loglevel, configfile=configfile)
         return aligner
 
     def set_parallel_processing(self, multiprocess):
         """ Set whether to run detect and align together or separately """
         detector_vram = self.detector.vram
         aligner_vram = self.aligner.vram
-        gpu_stats = GPUStats()
-        if detector_vram == 0 or aligner_vram == 0 or gpu_stats.device_count == 0:
+        if detector_vram == 0 or aligner_vram == 0:
             logger.debug("At least one of aligner or detector have no VRAM requirement. "
                          "Enabling parallel processing.")
+            return True
+
+        gpu_stats = GPUStats()
+        if gpu_stats.device_count == 0:
+            logger.debug("No GPU detected. Enabling parallel processing.")
             return True
 
         if not multiprocess:

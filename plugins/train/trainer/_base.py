@@ -15,6 +15,7 @@
                             Set to None for not used
         no_logs:            Disable tensorboard logging
         warp_to_landmarks:  Use random_warp_landmarks instead of random_warp
+        augment_color:      Perform random shifting of RGB colors +/- 15%
         no_flip:            Don't perform a random flip on the image
         pingpong:           Train each side seperately per save iteration rather than together
 """
@@ -26,7 +27,7 @@ import time
 import cv2
 import numpy as np
 
-from tensorflow import keras as tf_keras
+import tensorflow as tf
 
 from lib.alignments import Alignments
 from lib.faces_detect import DetectedFace
@@ -112,21 +113,32 @@ class TrainerBase():
 
         logger.debug("Enabling TensorBoard Logging")
         tensorboard = dict()
+
         for side in self.sides:
             logger.debug("Setting up TensorBoard Logging. Side: %s", side)
             log_dir = os.path.join(str(self.model.model_dir),
                                    "{}_logs".format(self.model.name),
                                    side,
                                    "session_{}".format(self.model.state.session_id))
-            tbs = tf_keras.callbacks.TensorBoard(log_dir=log_dir,
-                                                 histogram_freq=0,  # Must be 0 or hangs
-                                                 batch_size=self.batch_size,
-                                                 write_graph=True,
-                                                 write_grads=True)
+            tbs = tf.keras.callbacks.TensorBoard(log_dir=log_dir, **self.tensorboard_kwargs)
             tbs.set_model(self.model.predictors[side])
             tensorboard[side] = tbs
         logger.info("Enabled TensorBoard Logging")
         return tensorboard
+
+    @property
+    def tensorboard_kwargs(self):
+        """ TF 1.13 + needs an additional kwarg which is not valid for earlier versions """
+        kwargs = dict(histogram_freq=0,  # Must be 0 or hangs
+                      batch_size=64,
+                      write_graph=True,
+                      write_grads=True)
+        tf_version = [int(ver) for ver in tf.__version__.split(".") if ver.isdigit()]
+        logger.debug("Tensorflow version: %s", tf_version)
+        if tf_version[0] > 1 or (tf_version[0] == 1 and tf_version[1] > 12):
+            kwargs["update_freq"] = "batch"
+        logger.debug(kwargs)
+        return kwargs
 
     def print_loss(self, loss):
         """ Override for specific model loss formatting """
@@ -144,8 +156,8 @@ class TrainerBase():
     def train_one_step(self, viewer, timelapse_kwargs):
         """ Train a batch """
         logger.trace("Training one step: (iteration: %s)", self.model.iterations)
-        do_preview = False if viewer is None else True
-        do_timelapse = False if timelapse_kwargs is None else True
+        do_preview = viewer is not None
+        do_timelapse = timelapse_kwargs is not None
         loss = dict()
         for side, batcher in self.batchers.items():
             if self.pingpong.active and side != self.pingpong.side:
@@ -212,11 +224,13 @@ class Batcher():
         self.model = model
         self.use_mask = use_mask
         self.side = side
+        self.images = images
         self.target = None
         self.samples = None
         self.mask = None
 
         self.feed = self.load_generator().minibatch_ab(images, batch_size, self.side)
+        self.preview_feed = None
         self.timelapse_feed = None
 
     def load_generator(self):
@@ -240,11 +254,10 @@ class Batcher():
         """ Return the next batch from the generator
             Items should come out as: (warped, target [, mask]) """
         batch = next(self.feed)
-        self.samples = batch[0] if do_preview else None
         batch = batch[1:]   # Remove full size samples from batch
         if self.use_mask:
             batch = self.compile_mask(batch)
-        self.target = batch[1] if do_preview else None
+        self.generate_preview(do_preview)
         return batch
 
     def compile_mask(self, batch):
@@ -256,6 +269,33 @@ class Batcher():
             image = batch[idx]
             retval.append([image, mask])
         return retval
+
+    def generate_preview(self, do_preview):
+        """ Generate the preview if a preview iteration """
+        if not do_preview:
+            self.samples = None
+            self.target = None
+            return
+        logger.debug("Generating preview")
+        if self.preview_feed is None:
+            self.set_preview_feed()
+        batch = next(self.preview_feed)
+        self.samples = batch[0]
+        batch = batch[1:]   # Remove full size samples from batch
+        if self.use_mask:
+            batch = self.compile_mask(batch)
+        self.target = batch[1]
+
+    def set_preview_feed(self):
+        """ Set the preview dictionary """
+        logger.debug("Setting preview feed: (side: '%s')", self.side)
+        batchsize = min(len(self.images), self.model.training_opts.get("preview_images", 14))
+        self.preview_feed = self.load_generator().minibatch_ab(self.images,
+                                                               batchsize,
+                                                               self.side,
+                                                               do_shuffle=True,
+                                                               is_preview=True)
+        logger.debug("Set preview feed. Batchsize: %s", batchsize)
 
     def compile_sample(self, batch_size, samples=None, images=None):
         """ Training samples to display in the viewer """

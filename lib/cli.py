@@ -355,6 +355,12 @@ class FaceSwapArgs():
         """ Arguments that are used in ALL parts of Faceswap
             DO NOT override this """
         global_args = list()
+        global_args.append({"opts": ("-C", "--configfile"),
+                            "action": FileFullPaths,
+                            "filetypes": "ini",
+                            "type": str,
+                            "help": "Optionally overide the saved config with the path to a "
+                                    "custom config file."})
         global_args.append({"opts": ("-L", "--loglevel"),
                             "type": str.upper,
                             "dest": "loglevel",
@@ -671,6 +677,8 @@ class ConvertArgs(ExtractConvertArgs):
                     "\nL|color-transfer: Transfers the color distribution from the source to the "
                     "target image using the mean and standard deviations of the L*a*b* "
                     "color space."
+                    "\nL|manual-balance: Manually adjust the balance of the image in a variety of "
+                    "color spaces. Best used with the Preview tool to set correct values."
                     "\nL|match-hist: Adjust the histogram of each color channel in the swapped "
                     "reconstruction to equal the histogram of the masked area in the orginal "
                     "image."
@@ -701,6 +709,8 @@ class ConvertArgs(ExtractConvertArgs):
                     "\nL|components: An improved face hull mask using a facehull of 8 facial "
                     "parts."
                     "\nL|dfl_full: An improved face hull mask using a facehull of 3 facial parts."
+                    "\nL|extended: Based on components mask. Extends the eyebrow points to "
+                    "further up the forehead. May perform badly on difficult angles."
                     "\nL|facehull: Face cutout based on landmarks."
                     "\nL|predicted: The predicted mask generated from the model. If the model was "
                     "not trained with a mask then this will fallback to "
@@ -954,6 +964,17 @@ class TrainArgs(FaceSwapArgs):
                                       "horizontally. Sometimes it is desirable for this not to "
                                       "occur. Generally this should be left off except for "
                                       "during 'fit training'."})
+        argument_list.append({"opts": ("-ac", "--augment-color"),
+                              "action": "store_true",
+                              "dest": "augment_color",
+                              "default": False,
+                              "help": "Perform color augmentation on training images. This has "
+                                      "a 50%% chance of performing Contrast Limited Adaptive "
+                                      "Histogram Equilization on the image. Then it randomly "
+                                      "shifts the color balance +/- 8%% and the lighting +/- 30%% "
+                                      "on each face fed to the model. Should help make the model "
+                                      "less susceptible to color differences between the A and B "
+                                      "set, but may increase training time."})
         argument_list.append({"opts": ("-tia", "--timelapse-input-A"),
                               "action": DirFullPaths,
                               "dest": "timelapse_input_a",

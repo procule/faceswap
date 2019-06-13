@@ -105,13 +105,14 @@ class FileHandler():
                                     ("Pickle", "*.p"),
                                     ("YAML", "*.yaml" "*.yml"),  # pylint: disable=W1403
                                     all_files],
-                     "config": [("Faceswap config files", "*.fsw"), all_files],
+                     "config": [("Faceswap GUI config files", "*.fsw"), all_files],
                      "csv": [("Comma separated values", "*.csv"), all_files],
                      "image": [("Bitmap", "*.bmp"),
                                ("JPG", "*.jpeg" "*.jpg"),  # pylint: disable=W1403
                                ("PNG", "*.png"),
                                ("TIFF", "*.tif" "*.tiff"),  # pylint: disable=W1403
                                all_files],
+                     "ini": [("Faceswap config files", "*.ini"), all_files],
                      "state": [("State files", "*.json"), all_files],
                      "log": [("Log files", "*.log"), all_files],
                      "video": [("Audio Video Interleave", "*.avi"),
@@ -513,6 +514,12 @@ class Config():
         return {self.command_notebook.tab(tab_id, "text").lower(): tab_id
                 for tab_id in range(0, self.command_notebook.index("end"))}
 
+    @property
+    def tools_command_tabs(self):
+        """ Return dict of tools command tab titles with their IDs """
+        return {self.command_notebook.tools_notebook.tab(tab_id, "text").lower(): tab_id
+                for tab_id in range(0, self.command_notebook.tools_notebook.index("end"))}
+
     @staticmethod
     def set_tk_vars():
         """ TK Variables to be triggered by to indicate
@@ -579,8 +586,11 @@ class Config():
             self.set_command_args(cmd, opts)
 
         if command:
-            self.command_notebook.select(self.command_tabs[command])
-
+            if command in self.command_tabs:
+                self.command_notebook.select(self.command_tabs[command])
+            else:
+                self.command_notebook.select(self.command_tabs["tools"])
+                self.command_notebook.tools_notebook.select(self.tools_command_tabs[command])
         self.add_to_recent(cfgfile.name, command)
         logger.debug("Loaded config: (command: '%s', cfgfile: '%s')", command, cfgfile)
 
