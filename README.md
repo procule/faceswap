@@ -12,41 +12,41 @@ FaceSwap is a tool that utilizes deep learning to recognize and swap faces in pi
 Make sure you check out [INSTALL.md](INSTALL.md) before getting started.
 
 - [deepfakes_faceswap](#deepfakesfaceswap)
-- [Manifesto](#manifesto)
-  - [FaceSwap is not porn.](#faceswap-is-not-porn)
-- [How To setup and run the project](#how-to-setup-and-run-the-project)
-- [Overview](#overview)
-  - [Extract](#extract)
-  - [Train](#train)
-  - [Convert](#convert)
-  - [GUI](#gui)
-- [General notes:](#general-notes)
-- [Help I need support!](#help-i-need-support)
-  - [Discord Server](#discord-server)
-  - [FaceSwap-Playground](#faceswap-playground)
-- [Donate](#donate)
+- [Manifesto](#Manifesto)
+  - [FaceSwap has ethical uses.](#FaceSwap-has-ethical-uses)
+- [How To setup and run the project](#How-To-setup-and-run-the-project)
+- [Overview](#Overview)
+  - [Extract](#Extract)
+  - [Train](#Train)
+  - [Convert](#Convert)
+  - [GUI](#GUI)
+- [General notes:](#General-notes)
+- [Help I need support!](#Help-I-need-support)
+  - [Discord Server](#Discord-Server)
+  - [FaceSwap-Playground](#FaceSwap-Playground)
+- [Donate](#Donate)
   - [@torzdf](#torzdf)
   - [@andenixa](#andenixa)
   - [@kvrooman](#kvrooman)
-- [How to contribute](#how-to-contribute)
-  - [For people interested in the generative models](#for-people-interested-in-the-generative-models)
-  - [For devs](#for-devs)
-  - [For non-dev advanced users](#for-non-dev-advanced-users)
-  - [For end-users](#for-end-users)
-  - [For haters](#for-haters)
-- [About github.com/deepfakes](#about-githubcomdeepfakes)
-  - [What is this repo?](#what-is-this-repo)
-  - [Why this repo?](#why-this-repo)
-  - [Why is it named 'deepfakes' if it is not /u/deepfakes?](#why-is-it-named-deepfakes-if-it-is-not-udeepfakes)
-  - [What if /u/deepfakes feels bad about that?](#what-if-udeepfakes-feels-bad-about-that)
-- [About machine learning](#about-machine-learning)
-  - [How does a computer know how to recognize/shape faces? How does machine learning work? What is a neural network?](#how-does-a-computer-know-how-to-recognizeshape-faces-how-does-machine-learning-work-what-is-a-neural-network)
+- [How to contribute](#How-to-contribute)
+  - [For people interested in the generative models](#For-people-interested-in-the-generative-models)
+  - [For devs](#For-devs)
+  - [For non-dev advanced users](#For-non-dev-advanced-users)
+  - [For end-users](#For-end-users)
+  - [For haters](#For-haters)
+- [About github.com/deepfakes](#About-githubcomdeepfakes)
+  - [What is this repo?](#What-is-this-repo)
+  - [Why this repo?](#Why-this-repo)
+  - [Why is it named 'deepfakes' if it is not /u/deepfakes?](#Why-is-it-named-deepfakes-if-it-is-not-udeepfakes)
+  - [What if /u/deepfakes feels bad about that?](#What-if-udeepfakes-feels-bad-about-that)
+- [About machine learning](#About-machine-learning)
+  - [How does a computer know how to recognize/shape faces? How does machine learning work? What is a neural network?](#How-does-a-computer-know-how-to-recognizeshape-faces-How-does-machine-learning-work-What-is-a-neural-network)
 
 # Manifesto
 
-## FaceSwap is not porn.
+## FaceSwap has ethical uses.
 
-When faceswapping was first developed and published, the technology was groundbreaking, it was a huge step in AI development. It was also completely ignored outside of academia because the code was confusing and fragmentary. It required a thorough understanding of complicated AI techniques and took a lot of effort to figure it out. Until one individual brought it together into a single, cohesive collection. It ran, it worked, and as is so often the way with new technology emerging on the internet, it was immediately used to create porn. The problem was that this was the first AI code that anyone could download, run and learn by experimentation without having a Ph.D. in math, computer theory, psychology, and more. Before "deepfakes" these techniques were like black magic, only practiced by those who could understand all of the inner workings as described in esoteric and endlessly complicated books and papers.
+When faceswapping was first developed and published, the technology was groundbreaking, it was a huge step in AI development. It was also completely ignored outside of academia because the code was confusing and fragmentary. It required a thorough understanding of complicated AI techniques and took a lot of effort to figure it out. Until one individual brought it together into a single, cohesive collection. It ran, it worked, and as is so often the way with new technology emerging on the internet, it was immediately used to create inappropriate content. Despite the inappropriate uses the software was given originally, it was the first AI code that anyone could download, run and learn by experimentation without having a Ph.D. in math, computer theory, psychology, and more. Before "deepfakes" these techniques were like black magic, only practiced by those who could understand all of the inner workings as described in esoteric and endlessly complicated books and papers.
 
 "Deepfakes" changed all that and anyone could participate in AI development. To us, developers, the release of this code opened up a fantastic learning opportunity. It allowed us to build on ideas developed by others, collaborate with a variety of skilled coders, experiment with AI whilst learning new skills and ultimately contribute towards an emerging technology which will only see more mainstream use as it progresses.
 
@@ -54,7 +54,7 @@ Are there some out there doing horrible things with similar software? Yes. And b
 
 We are not trying to denigrate celebrities or to demean anyone. We are programmers, we are engineers, we are Hollywood VFX artists, we are activists, we are hobbyists, we are human beings. To this end, we feel that it's time to come out with a standard statement of what this software is and isn't as far as us developers are concerned.
 
-- FaceSwap is not for creating porn
+- FaceSwap is not for creating inappropriate content.
 - FaceSwap is not for changing faces without consent or with the intent of hiding its use.
 - FaceSwap is not for any illicit, unethical, or questionable purposes.
 - FaceSwap exists to experiment and discover AI techniques, for social or political commentary, for movies, and for any number of ethical and reasonable uses.
@@ -64,7 +64,7 @@ We are very troubled by the fact that FaceSwap can be used for unethical and dis
 # How To setup and run the project
 FaceSwap is a Python program that will run on multiple Operating Systems including Windows, Linux, and MacOS.
 
-See [INSTALL.md](INSTALL.md) for full installation instructions. You will need a modern GPU with CUDA support for best performance.
+See [INSTALL.md](INSTALL.md) for full installation instructions. You will need a modern GPU with CUDA support for best performance. AMD GPUs are partially supported.
 
 # Overview
 The project has multiple entry points. You will have to:
@@ -135,7 +135,6 @@ Responsible for consolidating the converters, adding a lot of code to fix model 
 ## For devs
  - Read this README entirely
  - Fork the repo
- - Download the data with the link provided above
  - Play with it
  - Check issues with the 'dev' tag
  - For devs more interested in computer vision and openCV, look at issues with the 'opencv' tag. Also feel free to add your own alternatives/improvements
@@ -143,7 +142,6 @@ Responsible for consolidating the converters, adding a lot of code to fix model 
 ## For non-dev advanced users
  - Read this README entirely
  - Clone the repo
- - Download the data with the link provided above
  - Play with it
  - Check issues with the 'advuser' tag
  - Also go to the 'faceswap-playground' repo and help others.

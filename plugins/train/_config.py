@@ -49,8 +49,8 @@ class Config(FaceswapConfig):
                            "facial parts"
                            "\n\t dfl_full: An improved face hull mask using a facehull of 3 "
                            "facial parts"
-                           "\n\t extended: Based on components mask. Extends the eyebrow points to "
-                           "further up the forehead. May perform badly on difficult angles."
+                           "\n\t extended: Based on components mask. Extends the eyebrow points "
+                           "to further up the forehead. May perform badly on difficult angles."
                            "\n\t facehull: Face cutout based on landmarks")
         self.add_item(
             section=section, title="icnr_init", datatype=bool, default=False,
@@ -84,7 +84,8 @@ class Config(FaceswapConfig):
         section = ".".join((plugin_type, module.replace("_defaults", "")))
         logger.debug("Importing defaults module: %s.%s", module_path, module)
         mod = import_module("{}.{}".format(module_path, module))
-        helptext = mod._HELPTEXT + ADDITIONAL_INFO  # pylint:disable=protected-access
+        helptext = mod._HELPTEXT  # pylint:disable=protected-access
+        helptext += ADDITIONAL_INFO if module_path.endswith("model") else ""
         self.add_section(title=section, info=helptext)
         for key, val in mod._DEFAULTS.items():  # pylint:disable=protected-access
             self.add_item(section=section, title=key, **val)

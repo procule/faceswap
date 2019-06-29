@@ -10,6 +10,7 @@ import os
 from pathlib import Path
 
 import cv2
+import imageio_ffmpeg as im_ffm
 import numpy as np
 
 from lib.aligner import Extract as AlignerExtract
@@ -144,9 +145,7 @@ class Images():
     def images_found(self):
         """ Number of images or frames """
         if self.is_video:
-            cap = cv2.VideoCapture(self.args.input_dir)  # pylint: disable=no-member
-            retval = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))  # pylint: disable=no-member
-            cap.release()
+            retval = int(im_ffm.count_frames_and_secs(self.args.input_dir)[0])
         else:
             retval = len(self.input_images)
         return retval
@@ -157,7 +156,7 @@ class Images():
             logger.error("Input location %s not found.", self.args.input_dir)
             exit(1)
         if (os.path.isfile(self.args.input_dir) and
-                os.path.splitext(self.args.input_dir)[1] in _video_extensions):
+                os.path.splitext(self.args.input_dir)[1].lower() in _video_extensions):
             logger.info("Input Video: %s", self.args.input_dir)
             retval = True
         else:
@@ -283,7 +282,7 @@ class PostProcess():
             face_filter = dict(detector=self.args.detector.replace("-", "_").lower(),
                                aligner=self.args.aligner.replace("-", "_").lower(),
                                loglevel=self.args.loglevel,
-                               multiprocess=self.args.multiprocess)
+                               multiprocess=not self.args.singleprocess)
             filter_lists = dict()
             if hasattr(self.args, "ref_threshold"):
                 face_filter["ref_threshold"] = self.args.ref_threshold

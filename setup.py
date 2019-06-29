@@ -14,7 +14,7 @@ from subprocess import CalledProcessError, run, PIPE, Popen
 INSTALL_FAILED = False
 # Revisions of tensorflow-gpu and cuda/cudnn requirements
 TENSORFLOW_REQUIREMENTS = {"==1.12.0": ["9.0", "7.2"],
-                           ">=1.13.1": ["10.0", "7.4"]}
+                           ">=1.13.1,<1.14": ["10.0", "7.4"]}  # TF 1.14+ Not currently supported
 
 
 class Environment():
@@ -28,6 +28,7 @@ class Environment():
         self.cuda_path = ""
         self.cuda_version = ""
         self.cudnn_version = ""
+        self.enable_amd = False
         self.enable_docker = False
         self.enable_cuda = False
         self.required_packages = self.get_required_packages()
@@ -101,8 +102,10 @@ class Environment():
         for arg in argv:
             if arg == "--installer":
                 self.is_installer = True
-            if arg == "--gpu":
+            if arg == "--nvidia":
                 self.enable_cuda = True
+            if arg == "--amd":
+                self.enable_amd = True
 
     @staticmethod
     def get_required_packages():
@@ -207,7 +210,7 @@ class Environment():
             return
 
         if not self.enable_cuda:
-            self.required_packages.append("tensorflow")
+            self.required_packages.append("tensorflow==1.13.1")
             return
 
         tf_ver = None
@@ -256,6 +259,11 @@ class Environment():
             self.required_packages.append("tensorflow==1.13.1")
         else:
             self.required_packages.append("tensorflow-gpu==1.13.1")
+
+    def update_amd_dep(self):
+        """ Update amd dependency for AMD cards """
+        if self.enable_amd:
+            self.required_packages.append("plaidml-keras")
 
 
 class Output():
@@ -313,11 +321,14 @@ class Checks():
     # Checks not required for installer
         if self.env.is_installer:
             self.env.update_tf_dep()
+            self.env.update_amd_dep()
             return
 
-    # Ask Docker/Cuda
-        self.docker_ask_enable()
-        self.cuda_ask_enable()
+    # Ask AMD/Docker/Cuda
+        self.amd_ask_enable()
+        if not self.env.enable_amd:
+            self.docker_ask_enable()
+            self.cuda_ask_enable()
         if self.env.os_version[0] != "Linux" and self.env.enable_docker and self.env.enable_cuda:
             self.docker_confirm()
         if self.env.enable_docker:
@@ -336,8 +347,26 @@ class Checks():
             self.env.cuda_version = input("Manually specify CUDA version: ")
 
         self.env.update_tf_dep()
+        self.env.update_amd_dep()
         if self.env.os_version[0] == "Windows":
             self.tips.pip()
+
+    @property
+    def cuda_keys_windows(self):
+        """ Return the OS Environ CUDA Keys for Windows """
+        return [key for key in os.environ.keys() if key.lower().startswith("cuda_path_v")]
+
+    def amd_ask_enable(self):
+        """ Enable or disable Plaidml for AMD"""
+        self.output.info("AMD Support: AMD GPU support is currently limited.\r\n"
+                         "Nvidia Users MUST answer 'no' to this option.")
+        i = input("Enable AMD Support? [y/N] ")
+        if i in ("Y", "y"):
+            self.output.info("AMD Support Enabled")
+            self.env.enable_amd = True
+        else:
+            self.output.info("AMD Support Disabled")
+            self.env.enable_amd = False
 
     def docker_ask_enable(self):
         """ Enable or disable Docker """
@@ -415,16 +444,14 @@ class Checks():
 
     def cuda_check_windows(self):
         """ Check Windows CUDA Version """
-        cuda_keys = [key
-                     for key in os.environ.keys()
-                     if key.lower().startswith("cuda_path_v")]
+        cuda_keys = self.cuda_keys_windows
         if not cuda_keys:
             self.output.error("CUDA not found. See "
                               "https://github.com/deepfakes/faceswap/blob/master/INSTALL.md#cuda "
                               "for instructions")
             return
 
-        self.env.cuda_version = cuda_keys[0].replace("CUDA_PATH_V", "").replace("_", ".")
+        self.env.cuda_version = cuda_keys[0].lower().replace("cuda_path_v", "").replace("_", ".")
         self.env.cuda_path = os.environ[cuda_keys[0]]
         self.output.info("CUDA version: " + self.env.cuda_version)
 
@@ -433,6 +460,14 @@ class Checks():
         if self.env.os_version[0] == "Linux":
             cudnn_checkfiles = self.cudnn_checkfiles_linux()
         elif self.env.os_version[0] == "Windows":
+            if not self.env.cuda_path and not self.cuda_keys_windows:
+                self.output.error(
+                    "CUDA not found. See "
+                    "https://github.com/deepfakes/faceswap/blob/master/INSTALL.md#cuda "
+                    "for instructions")
+                return
+            if not self.env.cuda_path:
+                self.env.cuda_path = os.environ[self.cuda_keys_windows[0]]
             cudnn_checkfiles = self.cudnn_checkfiles_windows()
 
         cudnn_checkfile = None
@@ -516,6 +551,9 @@ class Install():
         if self.env.enable_cuda and self.env.is_macos:
             self.env.required_packages.extend(self.env.macos_required_packages)
         for pkg in self.env.required_packages:
+            pkg = self.check_os_requirements(pkg)
+            if pkg is None:
+                continue
             key = pkg.split("==")[0]
             if key not in self.env.installed_packages:
                 self.env.missing_packages.append(pkg)
@@ -525,6 +563,19 @@ class Install():
                     if pkg.split("==")[1] != self.env.installed_packages.get(key):
                         self.env.missing_packages.append(pkg)
                         continue
+
+    @staticmethod
+    def check_os_requirements(package):
+        """ Check that the required package is required for this OS """
+        if ";" not in package and "sys_platform" not in package:
+            return package
+        package = "".join(package.split())
+        pkg, tags = package.split(";")
+        tags = tags.split("==")
+        sys_platform = tags[tags.index("sys_platform") + 1].replace('"', "").replace("'", "")
+        if sys_platform == sys.platform:
+            return pkg
+        return None
 
     def check_conda_missing_dep(self):
         """ Check for conda missing dependencies """
@@ -584,7 +635,7 @@ class Install():
                     run(condaexe, stdout=devnull, stderr=devnull, check=True)
         except CalledProcessError:
             if not conda_only:
-                self.output.info("Couldn't install {} with Conda. Trying pip".format(package))
+                self.output.info("{} not available in Conda. Installing with pip".format(package))
             else:
                 self.output.warning("Couldn't install {} with Conda. "
                                     "Please install this package manually".format(package))

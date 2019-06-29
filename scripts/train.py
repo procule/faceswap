@@ -114,9 +114,10 @@ class Train():
             log = logger.critical
         else:
             msg = ("Exit requested! The trainer will complete its current cycle, "
-                   "save the models and quit (it can take up a couple of seconds "
-                   "depending on your training speed). If you want to kill it now, "
-                   "press Ctrl + c")
+                   "save the models and quit (This can take a couple of minutes "
+                   "depending on your training speed).")
+            if not self.args.redirect_gui:
+                msg += " If you want to kill it now, press Ctrl + c"
             log = logger.info
         log(msg)
         self.stop = True
@@ -153,13 +154,14 @@ class Train():
         logger.debug("Loading Model")
         model_dir = get_folder(self.args.model_dir)
         configfile = self.args.configfile if hasattr(self.args, "configfile") else None
+        augment_color = not self.args.no_augment_color
         model = PluginLoader.get_model(self.trainer_name)(
             model_dir,
             self.args.gpus,
             configfile=configfile,
             no_logs=self.args.no_logs,
             warp_to_landmarks=self.args.warp_to_landmarks,
-            augment_color=self.args.augment_color,
+            augment_color=augment_color,
             no_flip=self.args.no_flip,
             training_image_size=self.image_size,
             alignments_paths=self.alignments_paths,
@@ -197,7 +199,8 @@ class Train():
         trainer = PluginLoader.get_trainer(model.trainer)
         trainer = trainer(model,
                           self.images,
-                          self.args.batch_size)
+                          self.args.batch_size,
+                          self.args.configfile)
         logger.debug("Loaded Trainer")
         return trainer
 
@@ -241,13 +244,15 @@ class Train():
         """ Monitor the console, and generate + monitor preview if requested """
         is_preview = self.args.preview
         logger.debug("Launching Monitor")
-        logger.info("R|===============================================")
-        logger.info("R|- Starting                                    -")
+        logger.info("R|===================================================")
+        logger.info("R|  Starting")
         if is_preview:
-            logger.info("R|- Using live preview                          -")
-        logger.info("R|- Press 'ENTER' to save and quit              -")
-        logger.info("R|- Press 'S' to save model weights immediately -")
-        logger.info("R|===============================================")
+            logger.info("R|  Using live preview")
+        logger.info("R|  Press '%s' to save and quit",
+                    "Terminate" if self.args.redirect_gui else "ENTER")
+        if not self.args.redirect_gui:
+            logger.info("R|  Press 'S' to save model weights immediately")
+        logger.info("R|===================================================")
 
         keypress = KBHit(is_gui=self.args.redirect_gui)
         err = False
