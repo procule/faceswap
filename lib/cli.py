@@ -17,7 +17,7 @@ import cv2
 from importlib import import_module
 
 from lib.logger import crash_log, log_setup
-from lib.utils import safe_shutdown
+from lib.utils import FaceswapError, safe_shutdown
 from lib.model.masks import get_available_masks, get_default_mask
 from plugins.plugin_loader import PluginLoader
 
@@ -53,17 +53,16 @@ class ScriptExecutor():
         try:
             import tensorflow as tf
         except ImportError:
-            logger.error("Tensorflow is a requirement but is not installed on your system.")
-            exit(1)
+            raise FaceswapError("Tensorflow is a requirement but is not installed on your system.")
         tf_ver = float(".".join(tf.__version__.split(".")[:2]))
         if tf_ver < min_ver:
-            logger.error("The minimum supported Tensorflow is version %s but you have version "
-                         "%s installed. Please upgrade Tensorflow.", min_ver, tf_ver)
-            exit(1)
+            raise FaceswapError("The minimum supported Tensorflow is version {} but you have "
+                                "version {} installed. Please upgrade Tensorflow.".format(
+                                    min_ver, tf_ver))
         if tf_ver > max_ver:
-            logger.error("The maximumum supported Tensorflow is version %s but you have version "
-                         "%s installed. Please downgrade Tensorflow.", max_ver, tf_ver)
-            exit(1)
+            raise FaceswapError("The maximumum supported Tensorflow is version {} but you have "
+                                "version {} installed. Please downgrade Tensorflow.".format(
+                                    max_ver, tf_ver))
         logger.debug("Installed Tensorflow Version: %s", tf_ver)
 
     def test_for_gui(self):
@@ -87,7 +86,7 @@ class ScriptExecutor():
             # pylint: disable=unused-variable
             import tkinter  # noqa pylint: disable=unused-import
         except ImportError:
-            logger.warning(
+            logger.error(
                 "It looks like TkInter isn't installed for your OS, so "
                 "the GUI has been disabled. To enable the GUI please "
                 "install the TkInter application. You can try:")
@@ -98,18 +97,17 @@ class ScriptExecutor():
             logger.info("Arch: sudo pacman -S tk")
             logger.info("CentOS/Redhat: sudo yum install tkinter")
             logger.info("Fedora: sudo dnf install python3-tkinter")
-            exit(1)
+            raise FaceswapError("TkInter not found")
 
     @staticmethod
     def check_display():
         """ Check whether there is a display to output the GUI. If running on
             Windows then assume not running in headless mode """
         if not os.environ.get("DISPLAY", None) and os.name != "nt":
-            logger.warning("No display detected. GUI mode has been disabled.")
             if platform.system() == "Darwin":
                 logger.info("macOS users need to install XQuartz. "
                             "See https://support.apple.com/en-gb/HT201341")
-            exit(1)
+            raise FaceswapError("No display detected. GUI mode has been disabled.")
 
     def execute_script(self, arguments):
         """ Run the script for called command """
@@ -125,6 +123,12 @@ class ScriptExecutor():
             script = self.import_script()
             process = script(arguments)
             process.process()
+        except FaceswapError as err:
+            for line in str(err).splitlines():
+                logger.error(line)
+            crash_file = crash_log()
+            logger.info("To get more information on this error see the crash report written to "
+                        "'%s'", crash_file)
         except KeyboardInterrupt:  # pylint: disable=try-except-raise
             raise
         except SystemExit:
@@ -132,7 +136,7 @@ class ScriptExecutor():
         except Exception:  # pylint: disable=broad-except
             crash_file = crash_log()
             logger.exception("Got Exception on main handler:")
-            logger.critical("An unexpected crash has occurred. Crash report written to %s. "
+            logger.critical("An unexpected crash has occurred. Crash report written to '%s'. "
                             "Please verify you are running the latest version of faceswap "
                             "before reporting", crash_file)
 

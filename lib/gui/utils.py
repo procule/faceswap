@@ -3,6 +3,7 @@
 import logging
 import os
 import platform
+import re
 import sys
 import tkinter as tk
 from tkinter import filedialog, ttk
@@ -468,6 +469,7 @@ class ConsoleOut(ttk.Frame):  # pylint: disable=too-many-ancestors
         self.set_console_clear_var_trace()
         self.debug = debug
         self.build_console()
+        self.add_tags()
         logger.debug("Initialized %s", self.__class__.__name__)
 
     def set_console_clear_var_trace(self):
@@ -488,6 +490,17 @@ class ConsoleOut(ttk.Frame):  # pylint: disable=too-many-ancestors
 
         self.redirect_console()
         logger.debug("Built console")
+
+    def add_tags(self):
+        """ Add tags to text widget to color based on output """
+        logger.debug("Adding text color tags")
+        self.console.tag_config("default", foreground="#1E1E1E")
+        self.console.tag_config("stderr", foreground="#E25056")
+        self.console.tag_config("info", foreground="#2B445E")
+        self.console.tag_config("verbose", foreground="#008140")
+        self.console.tag_config("warning", foreground="#F77B00")
+        self.console.tag_config("critical", foreground="red")
+        self.console.tag_config("error", foreground="red")
 
     def redirect_console(self):
         """ Redirect stdout/stderr to console frame """
@@ -518,13 +531,24 @@ class SysOutRouter():
                      self.__class__.__name__, console, out_type)
         self.console = console
         self.out_type = out_type
-        self.color = ("black" if out_type == "stdout" else "red")
+        self.recolor = re.compile(r".+?(\s\d+:\d+:\d+\s)(?P<lvl>[A-Z]+)\s")
         logger.debug("Initialized %s", self.__class__.__name__)
+
+    def get_tag(self, string):
+        """ Set the tag based on regex of log output """
+        if self.out_type == "stderr":
+            # Output all stderr in red
+            return self.out_type
+
+        output = self.recolor.match(string)
+        if not output:
+            return "default"
+        tag = output.groupdict()["lvl"].strip().lower()
+        return tag
 
     def write(self, string):
         """ Capture stdout/stderr """
-        self.console.insert(tk.END, string, self.out_type)
-        self.console.tag_config(self.out_type, foreground=self.color)
+        self.console.insert(tk.END, string, self.get_tag(string))
         self.console.see(tk.END)
 
     @staticmethod
