@@ -38,10 +38,10 @@ class Interface():
                     "x": {"action": self.iterate_frame,
                           "args": ("navigation", 1),
                           "help": "Next Frame"},
-                    "-": {"action": self.iterate_frame,
+                    "[": {"action": self.iterate_frame,
                           "args": ("navigation", - 100),
                           "help": "100 Frames Back"},
-                    "+": {"action": self.iterate_frame,
+                    "]": {"action": self.iterate_frame,
                           "args": ("navigation", 100),
                           "help": "100 Frames Forward"},
                     "{": {"action": self.iterate_frame,
@@ -800,7 +800,7 @@ class MouseHandler():
             # up to 3-4 minutes, hence high timeout.
             a_event.wait(300)
             if not a_event.is_set():
-                if plugin.starstwith("fan"):
+                if plugin.startswith("fan"):
                     align_process.join()
                     logger.error("Error initializing FAN. Trying CV2-DNN")
                     continue
@@ -990,9 +990,9 @@ class MouseHandler():
         """ Convert Extracted Tuple to Alignments data """
         alignment = dict()
         bbox, landmarks = extract_data
-        alignment["x"] = bbox.left
-        alignment["w"] = bbox.width
-        alignment["y"] = bbox.top
-        alignment["h"] = bbox.height
+        alignment["x"] = bbox["left"]
+        alignment["w"] = bbox["right"] - bbox["left"]
+        alignment["y"] = bbox["top"]
+        alignment["h"] = bbox["bottom"] - bbox["top"]
         alignment["landmarksXY"] = landmarks
         return alignment
